@@ -4,7 +4,6 @@ class Whitespace
         # ファイル読み込み
         begin
             code = ARGF.readlines.join
-            # puts @code
         rescue
             puts "ファイルがありません。"
         end
@@ -62,13 +61,21 @@ class Whitespace
             "tt" => :in_num_h_push
         }
 
-        # スタック
-        @stack = []
-        # ヒープ
-        @heap = []
+        @stack = [] # スタック
+        @heap = {} # ヒープ
+        @pc = 0 # プログラムカウンタ（プログラムの先頭）
+        @subroutine = [] # サブルーチン
+        @label = {}  # ラベル
+        @is_end = false #フロー制御のプログラム終了フラグ
 
-        # 字句解析呼び出し
-        tokenize(code)
+        # 字句解析
+        result = tokenize(code)
+        # 構文解析
+        parsing(result)
+
+        # 意味解析
+        evaluate
+
     end
 
     # 字句解析
@@ -112,7 +119,7 @@ class Whitespace
 
         end
         # p result
-        parsing(result)
+        result
     end
 
     # s,t,nの文字に変換
@@ -173,19 +180,19 @@ class Whitespace
 
     end
 
+
+
     # 構文解析
     def parsing(tokenize)
-        result = []
-        n=3
-        tokenize.each_slice(n) do |imp, command, param|
+        @tokens = []
+        tokenize.each_slice(3) do |imp, command, param|
             #パラメータを数字に変換する
             if param != nil then
                 param = change_num(param) 
             end
-            result << [imp, command, param]
+            @tokens << [imp, command, param]
         end
-        p result
-        # semantic_analysis(result)
+        p @tokens
     end
 
     # パラメータを数値に変換
@@ -212,29 +219,32 @@ class Whitespace
         result
     end
 
+
+
     # 意味解析
-    def semantic_analysis(parsing)
-        i=0
-        length = parsing.length
-        while length > i
-            case parsing[i][0]
+    def evaluate
+        length = @tokens.length
+        while true
+            imp, cmd, param = @tokens[@pc] #多重代入
+            @pc = @pc + 1
+            case imp
             when :stack
-                stack(parsing[i][1], parsing[i][2])
+                stack(cmd, param)
             when :arithmetic
-                arithmetic(parsing[i][1])
+                arithmetic(cmd)
             when :heap
-                heap(parsing[i][1])
+                heap(cmd)
             when :flow
-                flow(parsing[i][1], parsing[i][2])
+                flow(cmd, param)
+                break if @is_end
             when :io
-                io(parsing[i][1])
+                io(cmd)
             end
-            i=i+1
         end
     end
 
     # スタック操作
-    def stack(cmd, param)
+    def stack(cmd, param = nil)
         case cmd
         when :push
             @stack.push(param)
@@ -273,30 +283,32 @@ class Whitespace
     def heap(cmd)
         case cmd
         when :push_heap
-            @heap
+            value = @stack.pop
+            address = @stack.pop
+            @heap[address] = value
         when :h_pull_s_push
-            @heap
+            @stack.push(@heap[@stack.pop])
         end
     end
 
     # フロー制御
-    def flow(cmd, param)
+    def flow(cmd, param = nil)
         case cmd
         when :label
-            pc=pc+1
+            @label[param] = @pc
         when :subroutine
+            @subroutine.push(@pc)
+            @pc = @label[param]
         when :jump
-            n = 0
-            @tokens.each { |i,c,p|
-                if c == :label and p == prmt then
-                    pc = n+1
-                end
-                n = n + 1
-            }
+            @pc = @label[param]
         when :top0_jump
+            @pc = @label[param] if @stack.pop == 0
         when :top_minus_jump
+            @pc = @label[param] if @stack.pop < 0
         when :end_sub
+            @pc = @subroutine.pop
         when :exit
+            @is_end = true
         end 
     end
 
@@ -305,16 +317,12 @@ class Whitespace
         case cmd
         when :out_let_top
             STDOUT << @stack.pop.chr
-            execute(tokens, pc + 1, @stack, @heap, subroutine)
         when :out_num_top
             STDOUT << @stack.pop
-            execute(tokens, pc + 1, @stack, @heap, subroutine)
         when :in_let_h_push
             @heap[@stack.pop] = STDIN.getc.ord
-            execute(tokens, pc + 1, @stack, @heap, subroutine)
         when :in_num_h_push
             @heap[@stack.pop] = STDIN.gets.to_i
-            execute(tokens, pc + 1, @stack, @heap, subroutine)
         end
     end
 
