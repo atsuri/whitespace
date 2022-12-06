@@ -1,0 +1,182 @@
+require 'strscan'
+class Whitespace
+    def initialize
+        # ファイル読み込み
+        begin
+            code = ARGF.readlines.join
+            # puts @code
+        rescue
+            puts "ファイルがありません。"
+        end
+
+        # IMP表
+        @imps = {
+            "s"  => :stack,
+            "ts" => :arithmetic,
+            "tt" => :heap,
+            "n"  => :flow,
+            "tn" => :io
+        }
+        
+        # s_スタック操作
+        @imp_s = {
+            "s"  => :push,
+            "ns" => :top_copy_push,
+            "ts" => :n_copy_push,
+            "nt" => :top2_change,
+            "nn" => :top_del,
+            "tn" => :bottom_n_del
+        }
+
+        # ts_算術演算
+        @imp_ts = {
+            "ss" => :add,
+            "st" => :sub,
+            "sn" => :mul,
+            "ts" => :div,
+            "tt" => :rem
+        }
+
+        # ts_ヒープアクセス
+        @imp_tt = {
+            "s" => :push_heap,
+            "t" => :h_pull_s_push
+        }
+
+        # n_フロー制御
+        @imp_n = {
+            "ss" => :label,
+            "st" => :subroutine,
+            "sn" => :jump,
+            "ts" => :top0_jump,
+            "tt" => :top_minus_jump,
+            "tn" => :end_sub,
+            "nn" => :exit
+        }
+
+        # tn_入出力
+        @imp_tn = {
+            "ss" => :out_let_top,
+            "st" => :out_num_top,
+            "ts" => :in_let_h_push,
+            "tt" => :in_num_h_push
+        }
+
+        # 字句解析呼び出し
+        tokenize(code)
+    end
+
+    # 字句解析
+    def tokenize(code)
+        result = []
+        scanner = StringScanner.new(code)
+
+        while true
+            # IMP切り出し　見えない
+            is_imp = scanner.scan(/\A( |\n|\t[ \n\t])/)
+            unless is_imp
+                raise Exception, "undefined imp"
+            end
+            # impをs,t,nに変換
+            trans_imp = trans_stn(is_imp)
+            # impをシンボルに変換
+            imp = @imps[trans_imp]
+            # puts imp # デバッグ
+
+
+            # コマンド切り出し　見えない
+            is_cmd = find_command(scanner, trans_imp) # コマンドを文字に変換
+            # コマンドをs,t,nに変換
+            trans_cmd = trans_stn(is_cmd)
+            # コマンドをシンボルに変換
+            imp_what = instance_variable_get("@imp_#{trans_imp}")
+            command = imp_what[trans_cmd]
+            # puts command # デバッグ
+
+
+            # パラメータ切り出し(必要なら) 見えない
+            is_prm = find_parameter(scanner, trans_imp, trans_cmd)
+            # パラメータを文字に変換
+            param = trans_stn(is_prm)
+            # puts param # デバッグ
+
+
+            if param then
+                result << imp << command << param
+            else
+                result << imp << command
+            end
+            
+            # コマンドがexitだったら
+            break if command == @imp_n["nn"]
+        end
+        print result
+    end
+
+    # s,t,nの文字に変換
+    def trans_stn(space)
+        return if !space
+
+        result = []
+        # 一文字ずつ
+        space.each_char do |stn|
+            case stn
+            when " "
+                result << "s"
+            when /\t/
+                result << "t"
+            when /\n/
+                result << "n"
+            end
+        end
+        result.join
+    end
+
+    # コマンド切り出し
+    def find_command(scanner, imp)
+        case imp
+        when "s"
+            result = scanner.scan(/\A( |\n[ \n\t]|\t[ \n])/)
+        when "ts"
+            result = scanner.scan(/\A( [ \t\n]|\t[ \t])/)
+        when "tt"
+            result = scanner.scan(/\A( |\t)/)
+        when "n"
+            result = scanner.scan(/\A( [ \t\n]|\t[ \t\n]|\n\n)/)
+        when "tn"
+            result = scanner.scan(/\A( [ \t]|\t[ \t])/)
+        end
+
+        unless result
+            raise StandardError, 'undefined command'
+        else
+            result # 見えない
+        end
+    end
+
+    # パラメータ切り出し
+    def find_parameter(scanner, imp, cmd)
+        is_match_s = (cmd =~ /\A(s|t[ns])/)
+        is_match_n =  (cmd =~ /\A(s[nst]|t[st])/)
+
+        if (imp == "s" && is_match_s) || (imp == "n" && is_match_n) then
+            result = scanner.scan(/\A([ \t]+\n)/)
+
+            unless result
+                raise StandardError, 'undefined parameter'
+            else
+                result.chop # 見えない
+            end
+        end
+
+    end
+end
+
+Whitespace.new
+
+
+
+################################
+
+% ruby whitespace.rb count.ws
+[:stack, :push, "st", :flow, :label, "stsssstt", :stack, :top_copy_push, :io, :out_num_top, :stack, :push, "ststs", :io, :out_let_top, :stack, :push, "st", :arithmetic, :add, :stack, :top_copy_push, :stack, :push, "ststt", :arithmetic, :sub, :flow, :top0_jump, "stssstst", :flow, :jump, "stsssstt", :flow, :label, "stssstst", :stack, :top_del, :flow, :exit]%
