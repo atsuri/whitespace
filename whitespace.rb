@@ -187,12 +187,13 @@ class Whitespace
         @tokens = []
         tokenize.each_slice(3) do |imp, command, param|
             #パラメータを数字に変換する
-            if param != nil then
+            if param then
+                # p "#{param}, 変換"
                 param = change_num(param) 
             end
             @tokens << [imp, command, param]
         end
-        p @tokens
+        # p @tokens
     end
 
     # パラメータを数値に変換
@@ -226,6 +227,7 @@ class Whitespace
         length = @tokens.length
         while true
             imp, cmd, param = @tokens[@pc] #多重代入
+            # puts "#{imp}, #{cmd}, #{param}"
             @pc = @pc + 1
             case imp
             when :stack
