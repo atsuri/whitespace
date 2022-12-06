@@ -341,3 +341,22 @@ class Whitespace
 end
 
 Whitespace.new
+
+
+
+
+
+
+####################################################
+(base) ~/Documents/Third/Third_the_September_semester/Tue1_textprocessing/whitespace (evaluate ✘)✹✭ ᐅ ruby whitespace.rb count.ws
+[[:stack, :push, 1], [:flow, :label, 67], [:stack, :top_copy_push, nil], [:io, :out_num_top, nil], [:stack, :push, 10], [:io, :out_let_top, nil], [:stack, :push, 1], [:arithmetic, :add, nil], [:stack, :top_copy_push, nil], [:stack, :push, 11], [:arithmetic, :sub, nil], [:flow, :top0_jump, 69], [:flow, :jump, 67], [:flow, :label, 69], [:stack, :top_del, nil], [:flow, :exit, nil]]
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
