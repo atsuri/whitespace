@@ -111,7 +111,7 @@ class Whitespace
             result << imp << command << param
 
         end
-        p result
+        # p result
         parsing(result)
     end
 
@@ -185,21 +185,31 @@ class Whitespace
             result << [imp, command, param]
         end
         p result
-        semantic_analysis(result)
+        # semantic_analysis(result)
     end
 
     # パラメータを数値に変換
     def change_num(param)
+        # p param
         result = []
+        # 二進数に変換
         param.chars.each do |tab_spa|
             case tab_spa
-            when s
-                result << '0'
-            when t
-                result << '1'
+            when "s"
+                result << 0
+            when "t"
+                result << 1
             end
         end
-        result.join
+        result = result.join
+
+        # 十進数に変換
+        if result[0] == 1 then
+            result = result[1..].to_i(2) * -1
+        else 
+            result = result[1..].to_i(2)
+        end
+        result
     end
 
     # 意味解析
@@ -237,7 +247,7 @@ class Whitespace
         when :top_del
             @stack.pop
         when :bottom_n_del
-            @stack.delete_at(prmt)
+            @stack.delete_at(param)
         end
     end
 
@@ -292,6 +302,7 @@ class Whitespace
 
     #入出力
     def io(cmd)
+        case cmd
         when :out_let_top
             STDOUT << @stack.pop.chr
             execute(tokens, pc + 1, @stack, @heap, subroutine)
